@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class GameScreen : MonoBehaviour
+public class GameScreen : UIBase
 {
     [SerializeField] private PlayerController playerController;
 
@@ -20,9 +20,23 @@ public class GameScreen : MonoBehaviour
             jumpButton.onClick.RemoveListener(OnJumpButtonClicked);
     }
 
+    public override void OnAwake()
+    {
+        base.OnAwake();
+    }
+
+    public override void ShowScreen()
+    {
+        base.ShowScreen();
+    }
+
+    public override void HideScreen()
+    {
+        base.HideScreen();
+    }
+
     void OnJumpButtonClicked()
     {
-        if (playerController != null)
-            playerController.Jump();
+        playerController.Jump();
     }
 }
