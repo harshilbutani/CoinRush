@@ -1,3 +1,4 @@
+using System.Collections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,44 +10,63 @@ using UnityEngine.SceneManagement;
 
 public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 {
-    [SerializeField] private NetworkRunner _runner;
+    public event Action<string> OpponentPlayerNameReceived;
+    public event Action PlayersJoined;
+    public string opponentPlayerName { get; private set; }
+    public bool playersReady { get; private set; }
+    public bool IsRoomFull { get; private set; }
+
     [SerializeField] private NetworkSceneManagerDefault _sceneManager;
+    private NetworkRunner _runner;
 
     [Header("Room Settings")]
     [SerializeField] private int maxPlayers = 2;
     public string roomCode;
+    private int startRequestId;
+    private bool isLeavingRoom;
+    private Coroutine opponentNameCoroutine;
 
     public override void Awake()
     {
+        DonotDestroyOnLoad = true;
         base.Awake();
-
-        if (_runner == null)
-        {
-            _runner = GetComponent<NetworkRunner>();
-        }
 
         if (_sceneManager == null)
         {
             _sceneManager = GetComponent<NetworkSceneManagerDefault>();
+            if (_sceneManager == null)
+                _sceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();
         }
-
-        _runner.ProvideInput = true;
-        _runner.AddCallbacks(this);
     }
 
     public async void CreateRoom(string roomCode)
     {
+        isLeavingRoom = false;
         await StartRunner(GameMode.Host, roomCode);
     }
 
     public async void JoinRoom(string roomCode)
     {
+        isLeavingRoom = false;
         await StartRunner(GameMode.Client, roomCode);
     }
 
     private async Task StartRunner(GameMode mode, string roomCode)
     {
-        UIManager.Instance.GetScreen<MatchMakingScreen>()?.SetStatus("Connecting...");
+        int requestId = ++startRequestId;
+
+        if (this == null)
+            return;
+
+        if (_sceneManager == null)
+            return;
+
+        await DestroyCurrentRunner();
+
+        if (this == null || isLeavingRoom || requestId != startRequestId)
+            return;
+
+        _runner = CreateRunner();
 
         var scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex);
         var sceneInfo = new NetworkSceneInfo();
@@ -58,43 +78,136 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
             SessionName = roomCode,
             PlayerCount = maxPlayers,
             Scene = scene,
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
+            SceneManager = _sceneManager
         });
+
+        if (this == null || isLeavingRoom || requestId != startRequestId)
+            return;
 
         if (result.Ok)
         {
             Debug.Log($"Success! Mode: {mode}, Room: {roomCode}");
-            if (mode == GameMode.Client)
+
+            if (mode == GameMode.Host)
             {
                 UIManager.Instance.loader.HideScreen();
                 UIManager.Instance.ShowNextScreen(ScreenNames.MatchMakingScreen);
-                if (_runner.ActivePlayers.Count() == maxPlayers)
-                    UIManager.Instance.GetScreen<MatchMakingScreen>()?.StartTimer();
             }
         }
         else
         {
             Debug.LogError($"Failed to start: {result.ShutdownReason}");
-            if (mode == GameMode.Client)
-            {
-                UIManager.Instance.loader.HideScreen();
-                UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
-            }
+            UIManager.Instance.loader.HideScreen();
+            UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
         }
     }
 
-    // ---- The callbacks you actually care about ----
+    private NetworkRunner CreateRunner()
+    {
+        GameObject runnerObject = new GameObject("NetworkRunner");
+        runnerObject.transform.SetParent(transform);
+
+        NetworkRunner runner = runnerObject.AddComponent<NetworkRunner>();
+        runner.ProvideInput = true;
+        runner.AddCallbacks(this);
+        return runner;
+    }
+
+    private async Task DestroyCurrentRunner()
+    {
+        if (_runner == null)
+            return;
+
+        NetworkRunner runner = _runner;
+        _runner = null;
+
+        if (runner.IsRunning)
+            await runner.Shutdown(destroyGameObject: false);
+
+        if (runner != null)
+            Destroy(runner.gameObject);
+    }
+
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        UIManager.Instance.GetScreen<MatchMakingScreen>()?.SetStatus("Waiting for opponent...");
+        if (runner.IsServer)
+            SpawnPlayer(runner, player);
 
+        if (player == runner.LocalPlayer && UIManager.Instance.currentScreen != ScreenNames.MatchMakingScreen)
+        {
+            UIManager.Instance.loader.HideScreen();
+            UIManager.Instance.ShowNextScreen(ScreenNames.MatchMakingScreen);
+            TryStartMatchTimer();
+        }
         if (runner.ActivePlayers.Count() == maxPlayers)
         {
+            if (IsRoomFull)
+                return;
+
+            IsRoomFull = true;
+            PlayersJoined?.Invoke();
             Debug.Log($"<color=green>Room is full! Starting game for room: {runner.SessionInfo.Name}</color>");
-            if (UIManager.Instance.currentScreen == ScreenNames.MatchMakingScreen)
-                UIManager.Instance.GetScreen<MatchMakingScreen>()?.StartTimer();
+
+            StartWaitingForOpponentName();
+
+            if (runner.IsServer)
+                SendPlayersReady(runner);
         }
 
+    }
+
+    private void SendPlayersReady(NetworkRunner runner)
+    {
+        NetworkObject playerObject = runner.GetPlayerObject(runner.LocalPlayer);
+        NetworkPlayerData playerData = playerObject != null
+            ? playerObject.GetComponent<NetworkPlayerData>()
+            : null;
+
+        if (playerData != null)
+            playerData.SendPlayersReady();
+    }
+
+    public void ReceivePlayersReady()
+    {
+        playersReady = true;
+        TryStartMatchTimer();
+    }
+
+    public async void LeaveRoom()
+    {
+        isLeavingRoom = true;
+        startRequestId++;
+
+        await DestroyCurrentRunner();
+
+        IsRoomFull = false;
+        playersReady = false;
+        opponentPlayerName = string.Empty;
+        UIManager.Instance.loader.HideScreen();
+        UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+    }
+
+    private void TryStartMatchTimer()
+    {
+        if (playersReady && UIManager.Instance.currentScreen == ScreenNames.MatchMakingScreen)
+            UIManager.Instance.GetScreen<MatchMakingScreen>()?.StartTimer();
+    }
+
+    private void SpawnPlayer(NetworkRunner runner, PlayerRef player)
+    {
+        if (GameManager.Instance == null || GameManager.Instance.playerPrefab == null)
+        {
+            Debug.LogError("Player prefab is not assigned on GameManager.");
+            return;
+        }
+
+        NetworkObject playerObject = runner.Spawn(
+            GameManager.Instance.playerPrefab,
+            GetSpawnPosition(player),
+            Quaternion.identity,
+            player);
+
+        runner.SetPlayerObject(player, playerObject);
     }
 
     private Vector3 GetSpawnPosition(PlayerRef player)
@@ -104,10 +217,76 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
         return pos;
     }
 
+    public bool TryGetOpponentPlayerName(out string playerName)
+    {
+        playerName = opponentPlayerName;
+
+        if (!string.IsNullOrEmpty(playerName))
+            return true;
+
+        if (_runner == null || !_runner.IsRunning)
+            return false;
+
+        foreach (PlayerRef player in _runner.ActivePlayers)
+        {
+            if (player == _runner.LocalPlayer)
+                continue;
+
+            NetworkObject playerObject = _runner.GetPlayerObject(player);
+            NetworkPlayerData playerData = playerObject != null
+                ? playerObject.GetComponent<NetworkPlayerData>()
+                : null;
+
+            if (playerData == null || playerData.PlayerName.ToString().Length == 0)
+                continue;
+
+            playerName = playerData.PlayerName.ToString();
+            opponentPlayerName = playerName;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void StartWaitingForOpponentName()
+    {
+        if (opponentNameCoroutine != null)
+            StopCoroutine(opponentNameCoroutine);
+
+        opponentNameCoroutine = StartCoroutine(WaitForOpponentName());
+    }
+
+    private IEnumerator WaitForOpponentName()
+    {
+        while (string.IsNullOrEmpty(opponentPlayerName))
+        {
+            if (TryGetOpponentPlayerName(out string playerName))
+            {
+                opponentPlayerName = playerName;
+                OpponentPlayerNameReceived?.Invoke(playerName);
+                Debug.Log("Opponent name synchronized: " + playerName);
+                opponentNameCoroutine = null;
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        opponentNameCoroutine = null;
+    }
+
+    public void ReceivePlayerName(PlayerRef player, string playerName)
+    {
+        if (_runner != null && player == _runner.LocalPlayer)
+            return;
+
+        opponentPlayerName = playerName;
+        OpponentPlayerNameReceived?.Invoke(playerName);
+    }
+
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
-        UIManager.Instance.GetScreen<MatchMakingScreen>()?.SetStatus("Waiting for opponent...");
         Debug.Log("Player left: " + player);
     }
 
@@ -129,13 +308,13 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 
     public void OnConnectedToServer(NetworkRunner runner)
     {
-        UIManager.Instance.GetScreen<MatchMakingScreen>()?.SetStatus("Connected. Waiting for opponent...");
     }
     public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
     {
-        UIManager.Instance.GetScreen<MatchMakingScreen>()?.SetStatus("Room not found");
+        UIManager.Instance.loader.HideScreen();
+        UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
         Debug.LogError($"Could not connect to room: {reason}");
     }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }

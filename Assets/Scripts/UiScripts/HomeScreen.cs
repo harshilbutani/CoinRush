@@ -48,8 +48,8 @@ public class HomeScreen : UIBase
     public void OnCreateRoomButtonClicked()
     {
         RoomManager.Instance.GenerateRoomCode();
+        UIManager.Instance.loader.ShowScreen();
         RoomManager.Instance.CreateRoom(RoomManager.Instance.roomCode);
-        UIManager.Instance.ShowNextScreen(ScreenNames.MatchMakingScreen);
     }
 
     public void OnJoinRoomButtonClicked()

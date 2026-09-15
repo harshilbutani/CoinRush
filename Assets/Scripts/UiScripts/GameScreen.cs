@@ -1,3 +1,4 @@
+using Fusion;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -37,6 +38,21 @@ public class GameScreen : UIBase
 
     void OnJumpButtonClicked()
     {
-        playerController.Jump();
+        if (playerController != null)
+        {
+            playerController.Jump();
+            return;
+        }
+
+        PlayerController[] players = FindObjectsOfType<PlayerController>();
+        foreach (PlayerController player in players)
+        {
+            NetworkObject networkObject = player.GetComponent<NetworkObject>();
+            if (networkObject != null && networkObject.HasInputAuthority)
+            {
+                player.Jump();
+                return;
+            }
+        }
     }
 }

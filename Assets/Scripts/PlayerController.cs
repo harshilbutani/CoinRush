@@ -1,3 +1,4 @@
+using Fusion;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -9,16 +10,24 @@ public class PlayerController : MonoBehaviour
     [Header("Joystick")]
     public Joystick joystick;
 
+    NetworkObject networkObject;
     bool isGrounded;
 
     void Awake()
     {
         rb.freezeRotation = true;
+
+        networkObject = GetComponent<NetworkObject>();
+        if (joystick == null)
+            joystick = FindObjectOfType<Joystick>();
     }
 
     void FixedUpdate()
     {
-        float x = joystick != null ? joystick.Horizontal : Input.GetAxis("Horizontal");
+        if (networkObject != null && !networkObject.HasInputAuthority)
+            return;
+
+        float x = joystick != null ? joystick.Horizontal : 0f;
         rb.linearVelocity = new Vector2(x * speed, rb.linearVelocity.y);
 
         if (Mathf.Abs(x) > 0.01f)

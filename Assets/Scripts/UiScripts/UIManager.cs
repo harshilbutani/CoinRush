@@ -104,15 +104,6 @@ public class UIManager : Singleton<UIManager>
     #region PRIVATE_FUNCTIONS
     private void InitializeScreen()
     {
-        // if (DataSaveManager.Instance.IsFirstTimeLogin)
-        // {
-        //     InitScreen = ScreenNames.Profile;
-        // }
-        // else
-        // {
-        //     InitScreen = ScreenNames.MainMenu;
-        // }
-
         foreach (var item in screenTypes)
         {
             if (item.screenName == InitScreen)
