@@ -50,6 +50,10 @@ public class SplashScreen : UIBase
 
         Debug.Log("<color=yellow>Loading Complete!</color>");
 
-        UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+        ScreenNames nextScreen = PlayerDataManager.Instance != null && PlayerDataManager.Instance.IsFirstTime
+            ? ScreenNames.Profile
+            : ScreenNames.HomeScreen;
+
+        UIManager.Instance.ShowNextScreen(nextScreen);
     }
 }

@@ -6,14 +6,16 @@ using System.Collections.Generic;
 public enum ScreenNames
 {
     Splash,
+    Profile,
     HomeScreen,
     GameScreen,
+    MatchMakingScreen
 
 }
 
 public enum PopUpNames
 {
-
+    enterRoomCode,
 }
 
 [System.Serializable]
@@ -35,6 +37,7 @@ public class UIManager : Singleton<UIManager>
     #region PUBLIC_VARS
     [Header("Screen Canvas")]
     public List<ScreenType> screenTypes;
+    [SerializeField] public LoaderScreen loader;
     public ScreenNames currentScreen;
     public ScreenNames previousScreen;
     public ScreenNames InitScreen;
