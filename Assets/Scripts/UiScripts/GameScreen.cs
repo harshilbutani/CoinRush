@@ -5,9 +5,13 @@ using UnityEngine.UI;
 public class GameScreen : UIBase
 {
     [SerializeField] private PlayerController playerController;
+    [SerializeField] private NetworkGameTimer networkGameTimer;
 
     [Header("Buttons")]
     [SerializeField] private Button jumpButton;
+
+    [Header("Text")]
+    [SerializeField] private TMPro.TextMeshProUGUI timerText;
 
     void OnEnable()
     {
@@ -29,6 +33,10 @@ public class GameScreen : UIBase
     public override void ShowScreen()
     {
         base.ShowScreen();
+        if (networkGameTimer == null)
+            networkGameTimer = FindObjectOfType<NetworkGameTimer>();
+
+        networkGameTimer?.SetLocalPlayerReady();
     }
 
     public override void HideScreen()
@@ -54,5 +62,11 @@ public class GameScreen : UIBase
                 return;
             }
         }
+    }
+
+    public void UpdateTimer(float remainingSeconds)
+    {
+        if (timerText != null)
+            timerText.text = "Remaining Time: " + Mathf.Ceil(remainingSeconds) + "s";
     }
 }

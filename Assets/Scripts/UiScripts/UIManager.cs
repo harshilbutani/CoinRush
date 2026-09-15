@@ -9,7 +9,8 @@ public enum ScreenNames
     Profile,
     HomeScreen,
     GameScreen,
-    MatchMakingScreen
+    MatchMakingScreen,
+    ResultScreen
 
 }
 

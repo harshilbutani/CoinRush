@@ -8,6 +8,9 @@ public class GameManager : Singleton<GameManager>
     [Header("Game Starts Timer Seconds")]
     public float gameStartTimerSeconds;
 
+    [Header("Game Duration")]
+    public float gameTimerSeconds = 60f;
+
 
     public override void Awake()
     {

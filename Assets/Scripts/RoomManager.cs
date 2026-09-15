@@ -105,9 +105,9 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
     private NetworkRunner CreateRunner()
     {
         GameObject runnerObject = new GameObject("NetworkRunner");
-        runnerObject.transform.SetParent(transform);
 
         NetworkRunner runner = runnerObject.AddComponent<NetworkRunner>();
+        runnerObject.hideFlags = HideFlags.DontSave;
         runner.ProvideInput = true;
         runner.AddCallbacks(this);
         return runner;
