@@ -11,6 +11,9 @@ public class NetworkPlayerData : NetworkBehaviour
     public Vector2 NetworkPosition { get; private set; }
 
     [Networked]
+    public int SpawnPointIndex { get; private set; } = -1;
+
+    [Networked]
     public int CoinCount { get; private set; }
 
     [Header("Coin Display")]
@@ -20,6 +23,7 @@ public class NetworkPlayerData : NetworkBehaviour
     private string lastNotifiedPlayerName;
     private readonly List<GameObject> coinIcons = new List<GameObject>();
     private int displayedCoinCount = -1;
+    private int lastAppliedSpawnPointIndex = -1;
 
     public override void Spawned()
     {
@@ -63,17 +67,56 @@ public class NetworkPlayerData : NetworkBehaviour
 
     public override void Render()
     {
-        if (!Object.HasStateAuthority)
+        if (!Object.HasStateAuthority && SpawnPointIndex != lastAppliedSpawnPointIndex)
+        {
+            ApplyLocalSpawnPoint();
+            lastAppliedSpawnPointIndex = SpawnPointIndex;
+        }
+        else if (!Object.HasStateAuthority)
+        {
             transform.position = NetworkPosition;
+        }
 
         GetComponent<PlayerController>()?.UpdateNameLabel();
         UpdateCoinDisplay();
+    }
+
+    private void ApplyLocalSpawnPoint()
+    {
+        if (GameManager.Instance == null ||
+            GameManager.Instance.playerSpawnPoints == null ||
+            SpawnPointIndex < 0 ||
+            SpawnPointIndex >= GameManager.Instance.playerSpawnPoints.Length)
+            return;
+
+        Transform spawnPoint = GameManager.Instance.playerSpawnPoints[SpawnPointIndex];
+        transform.position = spawnPoint.position;
+        transform.rotation = spawnPoint.rotation;
     }
 
     public void CapturePosition()
     {
         if (Object.HasStateAuthority)
             NetworkPosition = transform.position;
+    }
+
+    public void SetSpawnPointIndex(int spawnPointIndex)
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        SpawnPointIndex = spawnPointIndex;
+
+        if (GameManager.Instance != null &&
+            GameManager.Instance.playerSpawnPoints != null &&
+            spawnPointIndex >= 0 &&
+            spawnPointIndex < GameManager.Instance.playerSpawnPoints.Length)
+        {
+            Transform spawnPoint = GameManager.Instance.playerSpawnPoints[spawnPointIndex];
+            transform.position = spawnPoint.position;
+            transform.rotation = spawnPoint.rotation;
+            NetworkPosition = transform.position;
+        }
     }
 
     public void AddCoin()

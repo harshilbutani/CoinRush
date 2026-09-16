@@ -10,6 +10,8 @@ using UnityEngine.SceneManagement;
 
 public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 {
+    public const int RoomCodeLength = 6;
+
     public event Action<string> OpponentPlayerNameReceived;
     public event Action PlayersJoined;
     public string opponentPlayerName { get; private set; }
@@ -203,38 +205,13 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 
         NetworkObject playerObject = runner.Spawn(
             GameManager.Instance.playerPrefab,
-            GetSpawnPosition(runner, player),
-            GetSpawnRotation(runner, player),
+            Vector3.zero,
+            Quaternion.identity,
             player);
 
+        NetworkPlayerData playerData = playerObject.GetComponent<NetworkPlayerData>();
+        playerData?.SetSpawnPointIndex(GetSpawnIndex(runner, player));
         runner.SetPlayerObject(player, playerObject);
-    }
-
-    private Vector3 GetSpawnPosition(NetworkRunner runner, PlayerRef player)
-    {
-        int spawnIndex = GetSpawnIndex(runner, player);
-        Transform[] spawnPoints = GameManager.Instance.playerSpawnPoints;
-        if (spawnPoints == null || spawnPoints.Length == 0)
-        {
-            Debug.LogWarning("No player spawn points assigned on GameManager. Using fallback positions.");
-            return spawnIndex == 0 ? new Vector3(-3, 1, 0) : new Vector3(3, 1, 0);
-        }
-
-        spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
-        Vector3 pos = spawnPoints[spawnIndex].position;
-        Debug.Log($"Spawning PlayerId {player.PlayerId} at spawn point index {spawnIndex}: {pos}");
-        return pos;
-    }
-
-    private Quaternion GetSpawnRotation(NetworkRunner runner, PlayerRef player)
-    {
-        Transform[] spawnPoints = GameManager.Instance.playerSpawnPoints;
-        if (spawnPoints == null || spawnPoints.Length == 0)
-            return Quaternion.identity;
-
-        int spawnIndex = GetSpawnIndex(runner, player);
-        spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
-        return spawnPoints[spawnIndex].rotation;
     }
 
     private int GetSpawnIndex(NetworkRunner runner, PlayerRef player)
@@ -243,8 +220,7 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
             .OrderBy(activePlayer => activePlayer.PlayerId)
             .ToList();
 
-        int spawnIndex = activePlayers.IndexOf(player);
-        return Mathf.Max(0, spawnIndex);
+        return Mathf.Max(0, activePlayers.IndexOf(player));
     }
 
     public bool TryGetOpponentPlayerName(out string playerName)
@@ -325,11 +301,11 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
         Debug.Log("Shutdown: " + shutdownReason);
     }
 
-    public string GenerateRoomCode(int length = 6)
+    public string GenerateRoomCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        var code = new char[length];
-        for (int i = 0; i < length; i++)
+        var code = new char[RoomCodeLength];
+        for (int i = 0; i < RoomCodeLength; i++)
             code[i] = chars[UnityEngine.Random.Range(0, chars.Length)];
         this.roomCode = new string(code);
         Debug.Log($"<color=green>Generated Room Code: {this.roomCode}</color>");

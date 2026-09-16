@@ -5,59 +5,57 @@ public class CoinManager : NetworkBehaviour
 {
     public static CoinManager Instance { get; private set; }
 
-    [SerializeField] private NetworkObject coinPrefab;
+    [SerializeField] private Coin sceneCoin;
     [SerializeField] private Transform[] coinSpawnPoints;
 
     [Networked]
     private int ActiveSpawnIndex { get; set; } = -1;
 
-    private NetworkObject activeCoin;
+    [Networked]
+    private NetworkBool CoinVisible { get; set; }
+
     private int lastSpawnIndex = -1;
 
     public override void Spawned()
     {
         Instance = this;
+        ApplyCoinState();
+    }
+
+    public override void Render()
+    {
+        ApplyCoinState();
     }
 
     public void StartCoinRound()
     {
-        if (!Object.HasStateAuthority || activeCoin != null)
+        if (!Object.HasStateAuthority || CoinVisible)
             return;
 
-        SpawnCoin();
+        SpawnCoinAtRandomIndex();
     }
 
     public void CollectCoin(NetworkPlayerData playerData)
     {
-        if (!Object.HasStateAuthority || activeCoin == null || playerData == null)
+        if (!Object.HasStateAuthority || !CoinVisible || playerData == null)
             return;
 
         playerData.AddCoin();
-        NetworkObject collectedCoin = activeCoin;
-        activeCoin = null;
-        Runner.Despawn(collectedCoin);
-        SpawnCoin();
+        SpawnCoinAtRandomIndex();
     }
 
     public void StopCoinRound()
     {
-        if (!Object.HasStateAuthority || activeCoin == null)
-            return;
-
-        Runner.Despawn(activeCoin);
-        activeCoin = null;
-    }
-
-    private void SpawnCoin()
-    {
         if (!Object.HasStateAuthority)
             return;
 
-        if (coinPrefab == null)
-        {
-            Debug.LogError("CoinManager: Coin prefab is not assigned.");
+        CoinVisible = false;
+    }
+
+    private void SpawnCoinAtRandomIndex()
+    {
+        if (!Object.HasStateAuthority)
             return;
-        }
 
         if (coinSpawnPoints == null || coinSpawnPoints.Length == 0)
         {
@@ -65,11 +63,25 @@ public class CoinManager : NetworkBehaviour
             return;
         }
 
-        int spawnIndex = GetNextSpawnIndex();
-        ActiveSpawnIndex = spawnIndex;
-        Transform spawnPoint = coinSpawnPoints[spawnIndex];
-        activeCoin = Runner.Spawn(coinPrefab, spawnPoint.position, spawnPoint.rotation);
-        lastSpawnIndex = spawnIndex;
+        ActiveSpawnIndex = GetNextSpawnIndex();
+        lastSpawnIndex = ActiveSpawnIndex;
+        CoinVisible = true;
+        ApplyCoinState();
+    }
+
+    private void ApplyCoinState()
+    {
+        if (sceneCoin == null || coinSpawnPoints == null || coinSpawnPoints.Length == 0)
+            return;
+
+        bool validIndex = ActiveSpawnIndex >= 0 && ActiveSpawnIndex < coinSpawnPoints.Length;
+        if (validIndex)
+        {
+            sceneCoin.transform.position = coinSpawnPoints[ActiveSpawnIndex].position;
+            sceneCoin.transform.rotation = coinSpawnPoints[ActiveSpawnIndex].rotation;
+        }
+
+        sceneCoin.SetVisible(CoinVisible && validIndex);
     }
 
     private int GetNextSpawnIndex()

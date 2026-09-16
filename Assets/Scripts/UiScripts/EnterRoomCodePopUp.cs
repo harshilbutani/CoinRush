@@ -19,12 +19,16 @@ public class EnterRoomCodePopUp : UIBase
     public override void OnAwake()
     {
         base.OnAwake();
+
+        if (roomCodeInputField != null)
+            roomCodeInputField.characterLimit = RoomManager.RoomCodeLength;
     }
 
     public override void ShowScreen()
     {
         base.ShowScreen();
         errorText.text = "";
+        roomCodeInputField.text = "";
     }
 
     public override void HideScreen()
@@ -60,6 +64,12 @@ public class EnterRoomCodePopUp : UIBase
         }
 
         string roomCode = roomCodeInputField.text.Trim().ToUpperInvariant();
+        if (roomCode.Length != RoomManager.RoomCodeLength)
+        {
+            errorText.text = "Room code must be 6 characters.";
+            return;
+        }
+
         RoomManager.Instance.roomCode = roomCode;
         UIManager.Instance.HidePopUp();
         UIManager.Instance.loader.ShowScreen();

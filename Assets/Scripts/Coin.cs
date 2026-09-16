@@ -3,36 +3,27 @@ using UnityEngine;
 
 public class Coin : NetworkBehaviour
 {
-    [Networked]
-    private Vector2 NetworkPosition { get; set; }
-
-    private bool collected;
-
-    public override void Spawned()
-    {
-        if (Object.HasStateAuthority)
-            NetworkPosition = transform.position;
-    }
-
-    public override void Render()
-    {
-        if (!Object.HasStateAuthority)
-            transform.position = NetworkPosition;
-    }
-
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!Object.HasStateAuthority || collected)
+        if (!Object.HasStateAuthority)
             return;
 
         NetworkPlayerData playerData = other.GetComponent<NetworkPlayerData>();
         if (playerData == null)
             playerData = other.GetComponentInParent<NetworkPlayerData>();
 
-        if (playerData == null)
-            return;
+        if (playerData != null)
+            CoinManager.Instance?.CollectCoin(playerData);
+    }
 
-        collected = true;
-        CoinManager.Instance?.CollectCoin(playerData);
+    public void SetVisible(bool visible)
+    {
+        SpriteRenderer spriteRenderer = GetComponent<SpriteRenderer>();
+        if (spriteRenderer != null)
+            spriteRenderer.enabled = visible;
+
+        Collider2D coinCollider = GetComponent<Collider2D>();
+        if (coinCollider != null)
+            coinCollider.enabled = visible;
     }
 }
