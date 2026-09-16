@@ -312,11 +312,25 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)
     {
+        NetworkGameTimer.Instance?.HandlePlayerLeft(player);
         Debug.Log("Player left: " + player);
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (_runner != null && _runner.IsRunning)
+            _runner.Shutdown();
     }
 
     public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
     {
+        if (!isLeavingRoom && UIManager.Instance != null &&
+            UIManager.Instance.currentScreen == ScreenNames.GameScreen)
+        {
+            UIManager.Instance.ShowNextScreen(ScreenNames.ResultScreen);
+            UIManager.Instance.GetScreen<ResultScreen>()?.ShowOpponentDisconnectWin();
+        }
+
         Debug.Log("Shutdown: " + shutdownReason);
     }
 
@@ -352,18 +366,10 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
     {
         PlayerController localPlayer = PlayerController.LocalPlayer;
 
-        if (localPlayer == null)
-        {
-            PlayerController[] players = FindObjectsOfType<PlayerController>();
-            foreach (PlayerController player in players)
-            {
-                if (player.HasInputAuthority)
-                {
-                    localPlayer = player;
-                    break;
-                }
-            }
-        }
+        if (localPlayer == null && PlayerManager.Instance != null)
+            localPlayer = PlayerManager.Instance.MyPlayer != null
+                ? PlayerManager.Instance.MyPlayer.GetComponent<PlayerController>()
+                : null;
 
         if (localPlayer != null)
             input.Set(localPlayer.ReadInput());

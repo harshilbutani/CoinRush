@@ -8,9 +8,17 @@ public class NetworkGameTimer : NetworkBehaviour
     [Networked] public NetworkBool Player0Ready { get; set; }
     [Networked] public NetworkBool Player1Ready { get; set; }
     [Networked] public NetworkBool TimerStarted { get; set; }
+    [Networked] public PlayerRef WinnerPlayer { get; set; }
+    [Networked] public NetworkBool OpponentDisconnected { get; set; }
 
+    public static NetworkGameTimer Instance { get; private set; }
     private bool resultShown;
     private PlayerRef firstReadyPlayer;
+
+    public override void Spawned()
+    {
+        Instance = this;
+    }
 
     public void SetLocalPlayerReady()
     {
@@ -56,6 +64,7 @@ public class NetworkGameTimer : NetworkBehaviour
         if (TimerStarted && !IsGameEnded && GameTimer.Expired(Runner))
         {
             IsGameEnded = true;
+            WinnerPlayer = FindWinnerByScore();
             CoinManager.Instance?.StopCoinRound();
             Debug.Log("<color=yellow>Network game timer expired.</color>");
         }
@@ -85,5 +94,43 @@ public class NetworkGameTimer : NetworkBehaviour
         UIManager.Instance.GetScreen<GameScreen>()?.UpdateTimer(0f);
         UIManager.Instance.ShowNextScreen(ScreenNames.ResultScreen);
         UIManager.Instance.GetScreen<ResultScreen>()?.ShowResults();
+    }
+
+    public void HandlePlayerLeft(PlayerRef leftPlayer)
+    {
+        if (!Object.HasStateAuthority || IsGameEnded)
+            return;
+
+        foreach (PlayerRef activePlayer in Runner.ActivePlayers)
+        {
+            if (activePlayer == leftPlayer)
+                continue;
+
+            WinnerPlayer = activePlayer;
+            OpponentDisconnected = true;
+            IsGameEnded = true;
+            CoinManager.Instance?.StopCoinRound();
+            Debug.Log($"Player {leftPlayer.PlayerId} left. Player {activePlayer.PlayerId} wins.");
+            return;
+        }
+    }
+
+    private PlayerRef FindWinnerByScore()
+    {
+        PlayerRef winner = PlayerRef.None;
+        int highestScore = -1;
+
+        foreach (PlayerRef player in Runner.ActivePlayers)
+        {
+            NetworkObject playerObject = Runner.GetPlayerObject(player);
+            NetworkPlayerData playerData = playerObject?.GetComponent<NetworkPlayerData>();
+            if (playerData == null || playerData.CoinCount <= highestScore)
+                continue;
+
+            highestScore = playerData.CoinCount;
+            winner = player;
+        }
+
+        return winner;
     }
 }

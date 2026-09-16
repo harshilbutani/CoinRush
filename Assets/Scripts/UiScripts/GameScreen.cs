@@ -10,6 +10,7 @@ public class GameScreen : UIBase
 
     [Header("Buttons")]
     [SerializeField] private Button jumpButton;
+    [SerializeField] private Button leaveButton;
 
     [Header("Text")]
     [SerializeField] private TMPro.TextMeshProUGUI timerText;
@@ -33,16 +34,20 @@ public class GameScreen : UIBase
             jumpButton.onClick.AddListener(OnJumpButtonClicked);
             Debug.Log("[GameScreen] Jump button listener registered.");
         }
+
+        if (leaveButton != null)
+            leaveButton.onClick.AddListener(OnLeaveButtonClicked);
         else
-        {
-            Debug.LogError("[GameScreen] Jump button reference is missing.");
-        }
+            Debug.LogWarning("[GameScreen] Leave button reference is missing.");
     }
 
     void OnDisable()
     {
         if (jumpButton != null)
             jumpButton.onClick.RemoveListener(OnJumpButtonClicked);
+
+        if (leaveButton != null)
+            leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
     }
 
     public override void OnAwake()
@@ -57,19 +62,6 @@ public class GameScreen : UIBase
         if (playerController == null)
         {
             playerController = PlayerController.LocalPlayer;
-
-            if (playerController == null)
-            {
-                PlayerController[] players = FindObjectsOfType<PlayerController>();
-                foreach (PlayerController player in players)
-                {
-                    if (player.HasInputAuthority)
-                    {
-                        playerController = player;
-                        break;
-                    }
-                }
-            }
         }
 
         if (networkGameTimer == null)
@@ -120,16 +112,8 @@ public class GameScreen : UIBase
 
     private void CacheScorePlayers()
     {
-        localPlayerData = null;
-        opponentPlayerData = null;
-
-        foreach (NetworkPlayerData player in FindObjectsOfType<NetworkPlayerData>())
-        {
-            if (player.Object != null && player.Object.HasInputAuthority)
-                localPlayerData = player;
-            else if (opponentPlayerData == null)
-                opponentPlayerData = player;
-        }
+        localPlayerData = PlayerManager.Instance != null ? PlayerManager.Instance.MyPlayer : null;
+        opponentPlayerData = PlayerManager.Instance != null ? PlayerManager.Instance.OpponentPlayer : null;
     }
 
     public override void HideScreen()
@@ -149,6 +133,11 @@ public class GameScreen : UIBase
 
         Debug.Log($"[GameScreen] Sending jump request to {playerController.name}.");
         playerController.RequestJump();
+    }
+
+    private void OnLeaveButtonClicked()
+    {
+        RoomManager.Instance?.LeaveRoom();
     }
 
     public void UpdateTimer(float remainingSeconds)

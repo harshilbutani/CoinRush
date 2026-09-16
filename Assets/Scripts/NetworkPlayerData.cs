@@ -32,6 +32,7 @@ public class NetworkPlayerData : NetworkBehaviour
         if (Object.HasStateAuthority)
             NetworkPosition = transform.position;
 
+        PlayerManager.Instance?.RegisterPlayer(this);
         GetComponent<PlayerController>()?.RegisterAsLocalPlayer();
 
         if (!Object.HasInputAuthority || PlayerDataManager.Instance == null)
@@ -155,6 +156,11 @@ public class NetworkPlayerData : NetworkBehaviour
     {
         if (Object.HasStateAuthority)
             CoinCount++;
+    }
+
+    public override void Despawned(NetworkRunner runner, bool hasState)
+    {
+        PlayerManager.Instance?.UnregisterPlayer(this);
     }
 
     private void UpdateCoinDisplay()

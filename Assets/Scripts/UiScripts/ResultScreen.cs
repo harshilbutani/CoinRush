@@ -40,30 +40,50 @@ public class ResultScreen : UIBase
         Debug.LogWarning("ResultScreen: RoomManager instance is not available.");
     }
 
+    public void ShowOpponentDisconnectWin()
+    {
+        if (resultText != null)
+            resultText.text = "You Win";
+
+        if (scoreText != null)
+            scoreText.text = "Opponent disconnected";
+    }
+
     public void ShowResults()
     {
-        NetworkPlayerData localPlayer = null;
-        NetworkPlayerData opponentPlayer = null;
-
-        foreach (NetworkPlayerData player in FindObjectsOfType<NetworkPlayerData>())
-        {
-            if (player.Object != null && player.Object.HasInputAuthority)
-                localPlayer = player;
-            else if (opponentPlayer == null)
-                opponentPlayer = player;
-        }
+        NetworkPlayerData localPlayer = PlayerManager.Instance != null ? PlayerManager.Instance.MyPlayer : null;
+        NetworkPlayerData opponentPlayer = PlayerManager.Instance != null ? PlayerManager.Instance.OpponentPlayer : null;
 
         if (localPlayer == null || opponentPlayer == null)
             return;
 
-        string result = localPlayer.CoinCount == opponentPlayer.CoinCount
-            ? "Draw"
-            : localPlayer.CoinCount > opponentPlayer.CoinCount ? "You Win" : "You Lose";
+        string result;
+        if (NetworkGameTimer.Instance != null && NetworkGameTimer.Instance.OpponentDisconnected)
+        {
+            result = "You Win";
+        }
+        else if (NetworkGameTimer.Instance != null && NetworkGameTimer.Instance.WinnerPlayer != PlayerRef.None)
+        {
+            result = localPlayer.Object.InputAuthority == NetworkGameTimer.Instance.WinnerPlayer
+                ? "You Win"
+                : "You Lose";
+        }
+        else
+        {
+            result = localPlayer.CoinCount == opponentPlayer.CoinCount
+                ? "Draw"
+                : localPlayer.CoinCount > opponentPlayer.CoinCount ? "You Win" : "You Lose";
+        }
 
         if (resultText != null)
             resultText.text = result;
 
         if (scoreText != null)
-            scoreText.text = "You: " + localPlayer.CoinCount + "    Opponent: " + opponentPlayer.CoinCount;
+        {
+            scoreText.text = NetworkGameTimer.Instance != null && NetworkGameTimer.Instance.OpponentDisconnected
+                ? "Opponent disconnected"
+                : "You = " + localPlayer.CoinCount + "    " +
+                  opponentPlayer.PlayerName + " = " + opponentPlayer.CoinCount;
+        }
     }
 }
