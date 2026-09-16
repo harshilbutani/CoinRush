@@ -30,6 +30,12 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 
     public override void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         DonotDestroyOnLoad = true;
         base.Awake();
 
@@ -180,13 +186,26 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
         isLeavingRoom = true;
         startRequestId++;
 
+        UIManager.Instance?.loader?.ShowScreen();
+
+        if (opponentNameCoroutine != null)
+        {
+            StopCoroutine(opponentNameCoroutine);
+            opponentNameCoroutine = null;
+        }
+
         await DestroyCurrentRunner();
 
         IsRoomFull = false;
         playersReady = false;
         opponentPlayerName = string.Empty;
-        UIManager.Instance.loader.HideScreen();
-        UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+
+        AsyncOperation loadOperation = SceneManager.LoadSceneAsync(
+            SceneManager.GetActiveScene().buildIndex,
+            LoadSceneMode.Single);
+
+        while (!loadOperation.isDone)
+            await Task.Yield();
     }
 
     private void TryStartMatchTimer()

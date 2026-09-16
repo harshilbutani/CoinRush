@@ -1,6 +1,7 @@
 using Fusion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class ResultScreen : UIBase
 {
@@ -8,9 +9,35 @@ public class ResultScreen : UIBase
     [SerializeField] private TextMeshProUGUI resultText;
     [SerializeField] private TextMeshProUGUI scoreText;
 
+    [Header("Buttons")]
+    [SerializeField] private Button homeButton;
+
+    private void OnEnable()
+    {
+        if (homeButton != null)
+            homeButton.onClick.AddListener(OnHomeButtonClicked);
+    }
+
+    private void OnDisable()
+    {
+        if (homeButton != null)
+            homeButton.onClick.RemoveListener(OnHomeButtonClicked);
+    }
+
     public override void OnAwake()
     {
         base.OnAwake();
+    }
+
+    private void OnHomeButtonClicked()
+    {
+        if (RoomManager.Instance != null)
+        {
+            RoomManager.Instance.LeaveRoom();
+            return;
+        }
+
+        Debug.LogWarning("ResultScreen: RoomManager instance is not available.");
     }
 
     public void ShowResults()

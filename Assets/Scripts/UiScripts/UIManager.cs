@@ -35,6 +35,8 @@ public class PopUpType
 
 public class UIManager : Singleton<UIManager>
 {
+    private const string SplashShownKey = "CoinRush.SplashShown";
+
     #region PUBLIC_VARS
     [Header("Screen Canvas")]
     public List<ScreenType> screenTypes;
@@ -105,9 +107,18 @@ public class UIManager : Singleton<UIManager>
     #region PRIVATE_FUNCTIONS
     private void InitializeScreen()
     {
+        ScreenNames initialScreen = InitScreen;
+
+        if (InitScreen == ScreenNames.Splash && PlayerPrefs.GetInt(SplashShownKey, 0) == 1)
+        {
+            initialScreen = PlayerDataManager.Instance != null && PlayerDataManager.Instance.IsFirstTime
+                ? ScreenNames.Profile
+                : ScreenNames.HomeScreen;
+        }
+
         foreach (var item in screenTypes)
         {
-            if (item.screenName == InitScreen)
+            if (item.screenName == initialScreen)
             {
                 item.screenBase.ShowScreen();
                 currentScreen = item.screenName;

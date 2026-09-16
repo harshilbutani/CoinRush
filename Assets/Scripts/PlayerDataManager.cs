@@ -36,4 +36,10 @@ public class PlayerDataManager : Singleton<PlayerDataManager>
         playerData.playerName = PlayerPrefs.GetString("PlayerData.Name", string.Empty);
         playerData.isFirstTime = PlayerPrefs.GetInt("PlayerData.FirstTime", 1) == 1;
     }
+
+    private void OnApplicationQuit()
+    {
+        PlayerPrefs.DeleteKey("CoinRush.SplashShown");
+        PlayerPrefs.Save();
+    }
 }

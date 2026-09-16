@@ -48,6 +48,9 @@ public class SplashScreen : UIBase
 
         progressSlider.value = 1f;
 
+        PlayerPrefs.SetInt("CoinRush.SplashShown", 1);
+        PlayerPrefs.Save();
+
         Debug.Log("<color=yellow>Loading Complete!</color>");
 
         ScreenNames nextScreen = PlayerDataManager.Instance != null && PlayerDataManager.Instance.IsFirstTime
