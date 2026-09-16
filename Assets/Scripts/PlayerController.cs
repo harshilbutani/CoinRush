@@ -1,6 +1,7 @@
 using Fusion;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class PlayerController : MonoBehaviour
 
     [Header("Joystick")]
     public Joystick joystick;
+
+    [Header("New Input System")]
+    [SerializeField] private InputActionReference moveAction;
+    [SerializeField] private InputActionReference jumpAction;
 
     [Header("Player Name")]
     [SerializeField] private TextMeshProUGUI nameText;
@@ -38,14 +43,38 @@ public class PlayerController : MonoBehaviour
 
     void OnEnable()
     {
+        if (moveAction != null)
+            moveAction.action.Enable();
+
+        if (jumpAction != null)
+        {
+            jumpAction.action.Enable();
+            jumpAction.action.performed += OnJumpActionPerformed;
+        }
+
         if (HasInputAuthority)
             LocalPlayer = this;
     }
 
     void OnDisable()
     {
+        if (jumpAction != null)
+            jumpAction.action.performed -= OnJumpActionPerformed;
+
+        if (moveAction != null)
+            moveAction.action.Disable();
+
+        if (jumpAction != null)
+            jumpAction.action.Disable();
+
         if (LocalPlayer == this)
             LocalPlayer = null;
+    }
+
+    private void OnJumpActionPerformed(InputAction.CallbackContext context)
+    {
+        if (HasInputAuthority)
+            RequestJump();
     }
 
     void FixedUpdate()
@@ -92,7 +121,13 @@ public class PlayerController : MonoBehaviour
 
     public PlayerInputData ReadInput()
     {
-        float horizontal = joystick != null ? joystick.Horizontal : 0f;
+        float horizontal = 0f;
+        if (moveAction != null)
+            horizontal = moveAction.action.ReadValue<Vector2>().x;
+
+        if (Mathf.Abs(horizontal) < 0.01f && joystick != null)
+            horizontal = joystick.Horizontal;
+
         bool jump = jumpRequested;
         jumpRequested = false;
 
