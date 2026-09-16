@@ -203,18 +203,48 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
 
         NetworkObject playerObject = runner.Spawn(
             GameManager.Instance.playerPrefab,
-            GetSpawnPosition(player),
-            Quaternion.identity,
+            GetSpawnPosition(runner, player),
+            GetSpawnRotation(runner, player),
             player);
 
         runner.SetPlayerObject(player, playerObject);
     }
 
-    private Vector3 GetSpawnPosition(PlayerRef player)
+    private Vector3 GetSpawnPosition(NetworkRunner runner, PlayerRef player)
     {
-        Vector3 pos = player.PlayerId == 0 ? new Vector3(-3, 1, 0) : new Vector3(3, 1, 0);
-        Debug.Log($"Spawning PlayerId {player.PlayerId} at {pos}");
+        int spawnIndex = GetSpawnIndex(runner, player);
+        Transform[] spawnPoints = GameManager.Instance.playerSpawnPoints;
+        if (spawnPoints == null || spawnPoints.Length == 0)
+        {
+            Debug.LogWarning("No player spawn points assigned on GameManager. Using fallback positions.");
+            return spawnIndex == 0 ? new Vector3(-3, 1, 0) : new Vector3(3, 1, 0);
+        }
+
+        spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
+        Vector3 pos = spawnPoints[spawnIndex].position;
+        Debug.Log($"Spawning PlayerId {player.PlayerId} at spawn point index {spawnIndex}: {pos}");
         return pos;
+    }
+
+    private Quaternion GetSpawnRotation(NetworkRunner runner, PlayerRef player)
+    {
+        Transform[] spawnPoints = GameManager.Instance.playerSpawnPoints;
+        if (spawnPoints == null || spawnPoints.Length == 0)
+            return Quaternion.identity;
+
+        int spawnIndex = GetSpawnIndex(runner, player);
+        spawnIndex = Mathf.Clamp(spawnIndex, 0, spawnPoints.Length - 1);
+        return spawnPoints[spawnIndex].rotation;
+    }
+
+    private int GetSpawnIndex(NetworkRunner runner, PlayerRef player)
+    {
+        List<PlayerRef> activePlayers = runner.ActivePlayers
+            .OrderBy(activePlayer => activePlayer.PlayerId)
+            .ToList();
+
+        int spawnIndex = activePlayers.IndexOf(player);
+        return Mathf.Max(0, spawnIndex);
     }
 
     public bool TryGetOpponentPlayerName(out string playerName)

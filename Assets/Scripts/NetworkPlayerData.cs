@@ -1,4 +1,5 @@
 using Fusion;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class NetworkPlayerData : NetworkBehaviour
@@ -9,7 +10,16 @@ public class NetworkPlayerData : NetworkBehaviour
     [Networked]
     public Vector2 NetworkPosition { get; private set; }
 
+    [Networked]
+    public int CoinCount { get; private set; }
+
+    [Header("Coin Display")]
+    [SerializeField] private Transform coinDisplayParent;
+    [SerializeField] private GameObject coinIconPrefab;
+
     private string lastNotifiedPlayerName;
+    private readonly List<GameObject> coinIcons = new List<GameObject>();
+    private int displayedCoinCount = -1;
 
     public override void Spawned()
     {
@@ -57,12 +67,41 @@ public class NetworkPlayerData : NetworkBehaviour
             transform.position = NetworkPosition;
 
         GetComponent<PlayerController>()?.UpdateNameLabel();
+        UpdateCoinDisplay();
     }
 
     public void CapturePosition()
     {
         if (Object.HasStateAuthority)
             NetworkPosition = transform.position;
+    }
+
+    public void AddCoin()
+    {
+        if (Object.HasStateAuthority)
+            CoinCount++;
+    }
+
+    private void UpdateCoinDisplay()
+    {
+        if (coinDisplayParent == null || coinIconPrefab == null || displayedCoinCount == CoinCount)
+            return;
+
+        while (coinIcons.Count < CoinCount)
+        {
+            GameObject coinIcon = Instantiate(coinIconPrefab, coinDisplayParent);
+            coinIcon.transform.localScale = Vector3.one;
+            coinIcons.Add(coinIcon);
+        }
+
+        while (coinIcons.Count > CoinCount)
+        {
+            int lastIndex = coinIcons.Count - 1;
+            Destroy(coinIcons[lastIndex]);
+            coinIcons.RemoveAt(lastIndex);
+        }
+
+        displayedCoinCount = CoinCount;
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

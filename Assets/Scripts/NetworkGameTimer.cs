@@ -49,12 +49,14 @@ public class NetworkGameTimer : NetworkBehaviour
         {
             GameTimer = TickTimer.CreateFromSeconds(Runner, GameManager.Instance.gameTimerSeconds);
             TimerStarted = true;
+            CoinManager.Instance?.StartCoinRound();
             Debug.Log("<color=green>Network game timer started for " + GameManager.Instance.gameTimerSeconds + " seconds.</color>");
         }
 
         if (TimerStarted && !IsGameEnded && GameTimer.Expired(Runner))
         {
             IsGameEnded = true;
+            CoinManager.Instance?.StopCoinRound();
             Debug.Log("<color=yellow>Network game timer expired.</color>");
         }
     }
@@ -82,5 +84,6 @@ public class NetworkGameTimer : NetworkBehaviour
         Debug.Log("<color=red>Game ended. Opening ResultScreen.</color>");
         UIManager.Instance.GetScreen<GameScreen>()?.UpdateTimer(0f);
         UIManager.Instance.ShowNextScreen(ScreenNames.ResultScreen);
+        UIManager.Instance.GetScreen<ResultScreen>()?.ShowResults();
     }
 }
