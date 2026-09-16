@@ -24,6 +24,8 @@ public class NetworkPlayerData : NetworkBehaviour
     private readonly List<GameObject> coinIcons = new List<GameObject>();
     private int displayedCoinCount = -1;
     private int lastAppliedSpawnPointIndex = -1;
+    private int lastScoreSentToUi = -1;
+    private string lastNameSentToUi;
 
     public override void Spawned()
     {
@@ -79,6 +81,14 @@ public class NetworkPlayerData : NetworkBehaviour
 
         GetComponent<PlayerController>()?.UpdateNameLabel();
         UpdateCoinDisplay();
+
+        string currentName = PlayerName.ToString();
+        if (lastScoreSentToUi != CoinCount || lastNameSentToUi != currentName)
+        {
+            lastScoreSentToUi = CoinCount;
+            lastNameSentToUi = currentName;
+            UIManager.Instance.GetScreen<GameScreen>()?.UpdateScoreText();
+        }
     }
 
     private void ApplyLocalSpawnPoint()
