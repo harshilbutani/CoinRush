@@ -1,14 +1,23 @@
 using Fusion;
+using UnityEngine;
 
 public class NetworkPlayerData : NetworkBehaviour
 {
     [Networked]
     public NetworkString<_32> PlayerName { get; private set; }
 
+    [Networked]
+    public Vector2 NetworkPosition { get; private set; }
+
     private string lastNotifiedPlayerName;
 
     public override void Spawned()
     {
+        if (Object.HasStateAuthority)
+            NetworkPosition = transform.position;
+
+        GetComponent<PlayerController>()?.RegisterAsLocalPlayer();
+
         if (!Object.HasInputAuthority || PlayerDataManager.Instance == null)
             return;
 
@@ -23,6 +32,14 @@ public class NetworkPlayerData : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
+        PlayerController playerController = GetComponent<PlayerController>();
+
+        if (Object.HasStateAuthority && playerController != null && GetInput<PlayerInputData>(out PlayerInputData input))
+        {
+            playerController.ApplyInput(input);
+            NetworkPosition = transform.position;
+        }
+
         if (Object.HasInputAuthority || string.IsNullOrEmpty(PlayerName.ToString()))
             return;
 
@@ -32,6 +49,20 @@ public class NetworkPlayerData : NetworkBehaviour
 
         lastNotifiedPlayerName = currentPlayerName;
         RoomManager.Instance?.ReceivePlayerName(Object.InputAuthority, currentPlayerName);
+    }
+
+    public override void Render()
+    {
+        if (!Object.HasStateAuthority)
+            transform.position = NetworkPosition;
+
+        GetComponent<PlayerController>()?.UpdateNameLabel();
+    }
+
+    public void CapturePosition()
+    {
+        if (Object.HasStateAuthority)
+            NetworkPosition = transform.position;
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

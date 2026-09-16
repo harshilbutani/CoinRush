@@ -1,4 +1,5 @@
 using Fusion;
+using TMPro;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -10,57 +11,120 @@ public class PlayerController : MonoBehaviour
     [Header("Joystick")]
     public Joystick joystick;
 
-    NetworkObject networkObject;
-    bool isGrounded;
+    [Header("Player Name")]
+    [SerializeField] private TextMeshProUGUI nameText;
+
+    private NetworkObject networkObject;
+    private NetworkPlayerData networkPlayerData;
+    private bool jumpRequested;
+
+    public static PlayerController LocalPlayer { get; private set; }
+    public bool HasInputAuthority => networkObject != null && networkObject.HasInputAuthority;
+    public bool HasStateAuthority => networkObject != null && networkObject.HasStateAuthority;
 
     void Awake()
     {
-        rb.freezeRotation = true;
+        transform.localScale = Vector3.one;
+
+        if (rb != null)
+            rb.freezeRotation = true;
 
         networkObject = GetComponent<NetworkObject>();
+        networkPlayerData = GetComponent<NetworkPlayerData>();
         if (joystick == null)
-            joystick = FindObjectOfType<Joystick>();
+            // joystick = FindObjectOfType<Joystick>();
+            this.joystick = UIManager.Instance.GetScreen<GameScreen>()?.joystick;
+    }
+
+    void OnEnable()
+    {
+        if (HasInputAuthority)
+            LocalPlayer = this;
+    }
+
+    void OnDisable()
+    {
+        if (LocalPlayer == this)
+            LocalPlayer = null;
     }
 
     void FixedUpdate()
     {
-        if (networkObject != null && !networkObject.HasInputAuthority)
+        if (networkObject == null || networkPlayerData == null)
             return;
 
-        float x = joystick != null ? joystick.Horizontal : 0f;
-        rb.linearVelocity = new Vector2(x * speed, rb.linearVelocity.y);
-
-        if (Mathf.Abs(x) > 0.01f)
+        if (HasInputAuthority)
         {
-            Vector3 s = transform.localScale;
-            s.x = Mathf.Sign(x) * Mathf.Abs(s.x);
-            transform.localScale = s;
+            LocalPlayer = this;
+            UpdateNameLabel();
+        }
+
+        if (HasStateAuthority)
+            networkPlayerData.CapturePosition();
+
+        LockRotation();
+    }
+
+    public void RegisterAsLocalPlayer()
+    {
+        if (HasInputAuthority)
+        {
+            LocalPlayer = this;
+            Debug.Log($"[PlayerController] Local player registered: {name}, Object={networkObject.Id}");
         }
     }
 
-    public void Jump()
+    public void RequestJump()
     {
-        if (!isGrounded)
-            return;
-
-        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
-        isGrounded = false;
+        jumpRequested = true;
+        Debug.Log($"[PlayerController] Jump requested. Player={name}, HasInputAuthority={HasInputAuthority}");
     }
 
-    void OnCollisionEnter2D(Collision2D collision)
+    private void LockRotation()
     {
-        foreach (ContactPoint2D contact in collision.contacts)
+        if (rb == null)
+            return;
+
+        rb.rotation = 0f;
+        rb.angularVelocity = 0f;
+        transform.rotation = Quaternion.identity;
+    }
+
+    public PlayerInputData ReadInput()
+    {
+        float horizontal = joystick != null ? joystick.Horizontal : 0f;
+        bool jump = jumpRequested;
+        jumpRequested = false;
+
+        if (jump)
+            Debug.Log($"[PlayerController] Jump input read by Fusion. Player={name}");
+
+        return new PlayerInputData
         {
-            if (contact.normal.y > 0.5f)
-            {
-                isGrounded = true;
-                return;
-            }
+            Horizontal = horizontal,
+            Jump = jump
+        };
+    }
+
+    public void ApplyInput(PlayerInputData input)
+    {
+        if (rb == null)
+            return;
+
+        LockRotation();
+        rb.linearVelocity = new Vector2(input.Horizontal * speed, rb.linearVelocity.y);
+
+        if (input.Jump)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            Debug.Log($"[PlayerController] Jump applied immediately. Player={name}");
         }
     }
 
-    void OnCollisionExit2D(Collision2D collision)
+    public void UpdateNameLabel()
     {
-        isGrounded = false;
+        if (nameText != null && networkPlayerData != null)
+            nameText.text = networkPlayerData.PlayerName.ToString();
     }
+
 }

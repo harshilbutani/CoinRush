@@ -13,10 +13,20 @@ public class GameScreen : UIBase
     [Header("Text")]
     [SerializeField] private TMPro.TextMeshProUGUI timerText;
 
+    [Header("Joystick")]
+    public Joystick joystick;
+
     void OnEnable()
     {
         if (jumpButton != null)
+        {
             jumpButton.onClick.AddListener(OnJumpButtonClicked);
+            Debug.Log("[GameScreen] Jump button listener registered.");
+        }
+        else
+        {
+            Debug.LogError("[GameScreen] Jump button reference is missing.");
+        }
     }
 
     void OnDisable()
@@ -33,6 +43,25 @@ public class GameScreen : UIBase
     public override void ShowScreen()
     {
         base.ShowScreen();
+
+        if (playerController == null)
+        {
+            playerController = PlayerController.LocalPlayer;
+
+            if (playerController == null)
+            {
+                PlayerController[] players = FindObjectsOfType<PlayerController>();
+                foreach (PlayerController player in players)
+                {
+                    if (player.HasInputAuthority)
+                    {
+                        playerController = player;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (networkGameTimer == null)
             networkGameTimer = FindObjectOfType<NetworkGameTimer>();
 
@@ -46,22 +75,16 @@ public class GameScreen : UIBase
 
     void OnJumpButtonClicked()
     {
-        if (playerController != null)
+        Debug.Log("[GameScreen] Jump button clicked.");
+
+        if (playerController == null)
         {
-            playerController.Jump();
+            Debug.LogWarning("[GameScreen] Jump failed: local PlayerController was not found.");
             return;
         }
 
-        PlayerController[] players = FindObjectsOfType<PlayerController>();
-        foreach (PlayerController player in players)
-        {
-            NetworkObject networkObject = player.GetComponent<NetworkObject>();
-            if (networkObject != null && networkObject.HasInputAuthority)
-            {
-                player.Jump();
-                return;
-            }
-        }
+        Debug.Log($"[GameScreen] Sending jump request to {playerController.name}.");
+        playerController.RequestJump();
     }
 
     public void UpdateTimer(float remainingSeconds)

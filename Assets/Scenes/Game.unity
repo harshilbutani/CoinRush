@@ -4314,7 +4314,7 @@ GameObject:
   - component: {fileID: 1067332412}
   - component: {fileID: 1067332411}
   m_Layer: 0
-  m_Name: GameState
+  m_Name: NetworkGameTimer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4388,7 +4388,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 22400762, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.00002670288
+      value: -0.0000038146973
       objectReference: {fileID: 0}
     - target: {fileID: 22426080, guid: 67117722a812a2e46ab8cb8eafbf5f5e, type: 3}
       propertyPath: m_AnchorMax.x
@@ -5006,6 +5006,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1131881013}
   m_CullTransparentMesh: 1
+--- !u!114 &1143136558 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2929252283123773951, guid: aaa2c939c0359ac4dbce3f49e8b90252, type: 3}
+  m_PrefabInstance: {fileID: 209059287}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45977bbae16431c46a013576a1aea384, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1207986642
 GameObject:
   m_ObjectHideFlags: 0
@@ -7213,6 +7224,7 @@ MonoBehaviour:
   networkGameTimer: {fileID: 1067332411}
   jumpButton: {fileID: 1131881015}
   timerText: {fileID: 1821908319}
+  joystick: {fileID: 1143136558}
 --- !u!1 &1928506668
 GameObject:
   m_ObjectHideFlags: 0

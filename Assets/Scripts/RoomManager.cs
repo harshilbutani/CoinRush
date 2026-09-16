@@ -323,7 +323,26 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
     public void OnSceneLoadDone(NetworkRunner runner) { }
     public void OnSceneLoadStart(NetworkRunner runner) { }
-    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input)
+    {
+        PlayerController localPlayer = PlayerController.LocalPlayer;
+
+        if (localPlayer == null)
+        {
+            PlayerController[] players = FindObjectsOfType<PlayerController>();
+            foreach (PlayerController player in players)
+            {
+                if (player.HasInputAuthority)
+                {
+                    localPlayer = player;
+                    break;
+                }
+            }
+        }
+
+        if (localPlayer != null)
+            input.Set(localPlayer.ReadInput());
+    }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
