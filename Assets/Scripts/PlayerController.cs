@@ -21,6 +21,7 @@ public class PlayerController : MonoBehaviour
 
     private NetworkObject networkObject;
     private NetworkPlayerData networkPlayerData;
+    private bool isGrounded;
     private bool jumpRequested;
 
     public static PlayerController LocalPlayer { get; private set; }
@@ -149,17 +150,66 @@ public class PlayerController : MonoBehaviour
         LockRotation();
         rb.linearVelocity = new Vector2(input.Horizontal * speed, rb.linearVelocity.y);
 
-        if (input.Jump)
+        if (input.Jump && isGrounded)
         {
             rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            isGrounded = false;
             Debug.Log($"[PlayerController] Jump applied immediately. Player={name}");
         }
+        else if (input.Jump)
+        {
+            Debug.Log($"[PlayerController] Jump ignored because player is airborne. Player={name}");
+        }
+    }
+
+    public void ResetVelocity()
+    {
+        if (rb == null)
+            return;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        rb.rotation = 0f;
+        isGrounded = false;
     }
 
     public void UpdateNameLabel()
     {
         if (nameText != null && networkPlayerData != null)
             nameText.text = networkPlayerData.PlayerName.ToString();
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        UpdateGroundedFromCollision(collision);
+    }
+
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        UpdateGroundedFromCollision(collision);
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        isGrounded = false;
+    }
+
+    private void UpdateGroundedFromCollision(Collision2D collision)
+    {
+        if (!HasStateAuthority)
+            return;
+
+        foreach (ContactPoint2D contact in collision.contacts)
+        {
+            if (contact.normal.y > 0.5f)
+            {
+                isGrounded = true;
+                return;
+            }
+        }
     }
 
 }

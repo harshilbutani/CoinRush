@@ -56,6 +56,13 @@ public class NetworkPlayerData : NetworkBehaviour
             NetworkPosition = transform.position;
         }
 
+        if (Object.HasStateAuthority &&
+            GameManager.Instance != null &&
+            transform.position.y < GameManager.Instance.fallLimitY)
+        {
+            RespawnAtSpawnPoint();
+        }
+
         if (Object.HasInputAuthority || string.IsNullOrEmpty(PlayerName.ToString()))
             return;
 
@@ -127,6 +134,21 @@ public class NetworkPlayerData : NetworkBehaviour
             transform.rotation = spawnPoint.rotation;
             NetworkPosition = transform.position;
         }
+    }
+
+    private void RespawnAtSpawnPoint()
+    {
+        if (GameManager.Instance == null ||
+            GameManager.Instance.playerSpawnPoints == null ||
+            SpawnPointIndex < 0 ||
+            SpawnPointIndex >= GameManager.Instance.playerSpawnPoints.Length)
+            return;
+
+        Transform spawnPoint = GameManager.Instance.playerSpawnPoints[SpawnPointIndex];
+        transform.SetPositionAndRotation(spawnPoint.position, spawnPoint.rotation);
+        GetComponent<PlayerController>()?.ResetVelocity();
+        NetworkPosition = transform.position;
+        Debug.Log($"Player respawned at spawn point {SpawnPointIndex}: {name}");
     }
 
     public void AddCoin()

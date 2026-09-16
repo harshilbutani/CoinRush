@@ -8,6 +8,9 @@ public class GameManager : Singleton<GameManager>
     [Header("Player Spawn Points")]
     public Transform[] playerSpawnPoints;
 
+    [Header("Player Respawn")]
+    public float fallLimitY = -10f;
+
     [Header("Game Starts Timer Seconds")]
     public float gameStartTimerSeconds;
 
