@@ -49,6 +49,9 @@ public class UIManager : Singleton<UIManager>
     public List<PopUpType> popUpTypes;
     public PopUpNames currentPopUpScreen;
     [HideInInspector] public bool isPopUpOn;
+
+    [Header("Alert")]
+    [SerializeField] private Alert alert;
     #endregion
 
     #region PRIVATE_VARS
@@ -92,6 +95,28 @@ public class UIManager : Singleton<UIManager>
             popUpTypes.Find(a => a.popUpName == currentPopUpScreen).popUpBase.HideScreen();
             isPopUpOn = false;
         }
+    }
+
+    public void ShowAlert(
+        string message,
+        AlertButtonMode buttonMode = AlertButtonMode.Ok,
+        System.Action onOk = null,
+        System.Action onYes = null,
+        System.Action onNo = null,
+        bool closeWithOkButton = true,
+        bool autoHide = false,
+        float autoHideSeconds = 0f,
+        AlertEnterDirection? enterFrom = null)
+    {
+        Alert alertInstance = alert != null ? alert : Alert.Instance;
+        alertInstance?.Show(message, buttonMode, onOk, onYes, onNo,
+            closeWithOkButton, autoHide, autoHideSeconds, enterFrom);
+    }
+
+    public void HideAlert()
+    {
+        Alert alertInstance = alert != null ? alert : Alert.Instance;
+        alertInstance?.HideScreen();
     }
 
     public T GetScreen<T>() where T : UIBase

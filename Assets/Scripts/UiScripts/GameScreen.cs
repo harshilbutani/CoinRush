@@ -137,6 +137,20 @@ public class GameScreen : UIBase
 
     private void OnLeaveButtonClicked()
     {
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowAlert(
+                "Are you sure you want to leave the game?",
+                AlertButtonMode.YesNo,
+                onYes: OnLeaveConfirmed);
+            return;
+        }
+
+        OnLeaveConfirmed();
+    }
+
+    private void OnLeaveConfirmed()
+    {
         RoomManager.Instance?.LeaveRoom();
     }
 

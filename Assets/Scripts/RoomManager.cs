@@ -62,6 +62,7 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
     private async Task StartRunner(GameMode mode, string roomCode)
     {
         int requestId = ++startRequestId;
+        this.roomCode = roomCode;
 
         if (this == null)
             return;
@@ -105,8 +106,16 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
         else
         {
             Debug.LogError($"Failed to start: {result.ShutdownReason}");
-            UIManager.Instance.loader.HideScreen();
-            UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+            UIManager.Instance?.loader?.HideScreen();
+
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+                UIManager.Instance.ShowAlert(
+                    $"Could not {(mode == GameMode.Client ? "join" : "create")} room.\n" +
+                    $"Reason: {result.ShutdownReason}",
+                    AlertButtonMode.Ok);
+            }
         }
     }
 
@@ -352,9 +361,19 @@ public class RoomManager : Singleton<RoomManager>, INetworkRunnerCallbacks
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
     public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason)
     {
-        UIManager.Instance.loader.HideScreen();
-        UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
-        Debug.LogError($"Could not connect to room: {reason}");
+        Debug.LogError(
+            $"Could not join room '{roomCode}'. " +
+            $"Reason: {reason}. Remote address: {remoteAddress}");
+
+        UIManager.Instance?.loader?.HideScreen();
+
+        if (UIManager.Instance != null)
+        {
+            UIManager.Instance.ShowNextScreen(ScreenNames.HomeScreen);
+            UIManager.Instance.ShowAlert(
+                $"Could not join room.\nReason: {reason}",
+                AlertButtonMode.Ok);
+        }
     }
     public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
