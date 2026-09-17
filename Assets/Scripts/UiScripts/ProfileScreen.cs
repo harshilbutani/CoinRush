@@ -20,7 +20,6 @@ public class ProfileScreen : UIBase
         if (playerNameInput != null)
         {
             playerNameInput.text = string.Empty;
-            playerNameInput.Select();
         }
 
         errorText.text = "";
