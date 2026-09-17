@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class SplashScreen : UIBase
 {
@@ -9,11 +10,15 @@ public class SplashScreen : UIBase
     [Header("Slider")]
     [SerializeField] private Slider progressSlider;
 
+    [Header("Text")]
+    [SerializeField] private TextMeshProUGUI gameVersionText;
+
     public override void OnAwake()
     {
         base.OnAwake();
 
         progressSlider.value = 0f;
+        SetGameVersion();
     }
 
     public override void ShowScreen()
@@ -58,5 +63,11 @@ public class SplashScreen : UIBase
             : ScreenNames.HomeScreen;
 
         UIManager.Instance.ShowNextScreen(nextScreen);
+    }
+
+    private void SetGameVersion()
+    {
+        if (gameVersionText != null)
+            gameVersionText.text = "Version " + Application.version;
     }
 }
